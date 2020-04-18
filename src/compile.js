@@ -22,8 +22,6 @@ module.exports = function compile(psModule) {
     output: options.output,
   }, options.pscArgs)))
 
-  const stderr = [];
-
   debug('compile %s %O', compileCommand, compileArgs)
 
   return new Promise((resolve, reject) => {
@@ -31,22 +29,24 @@ module.exports = function compile(psModule) {
 
     const compilation = spawn(compileCommand, compileArgs)
 
-    compilation.stderr.on('data', data => {
-      stderr.push(data.toString());
-    });
+    let stdout = ''
+    let stderr = ''
 
     compilation.stdout.on('data', data => {
-      debugVerbose(data.toString());
+      stdout += data
+    });
+
+    compilation.stderr.on('data', data => {
+      stderr += data
     });
 
     compilation.on('close', code => {
       debug('finished compiling PureScript.')
 
+      process.stdout.write(stdout + '\n');
+      process.stderr.write(stderr + '\n');
+
       if (code !== 0) {
-        const errorMessage = stderr.join('');
-        if (errorMessage.length) {
-          psModule.emitError(errorMessage);
-        }
         if (options.watch) {
           resolve(psModule);
         }
@@ -54,10 +54,6 @@ module.exports = function compile(psModule) {
           reject(new Error('compilation failed'))
         }
       } else {
-        const warningMessage = stderr.join('');
-        if (options.warnings && warningMessage.length) {
-          psModule.emitWarning(warningMessage);
-        }
         resolve(psModule)
       }
     })

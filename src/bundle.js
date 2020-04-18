@@ -13,9 +13,9 @@ const debug = require('debug')('purs-loader');
 const dargs = require('./dargs');
 
 module.exports = function bundle(options, bundleModules) {
-  const stdout = []
+  const stdout = ''
 
-  const stderr = []
+  const stderr = ''
 
   const bundleCommand = options.pscBundle || 'purs';
 
@@ -34,22 +34,20 @@ module.exports = function bundle(options, bundleModules) {
 
     const compilation = spawn(bundleCommand, bundleArgs)
 
-    compilation.stdout.on('data', data => stdout.push(data.toString()))
+    let stdout = ''
+    let stderr = ''
 
-    compilation.stderr.on('data', data => stderr.push(data.toString()))
+    compilation.stdout.on('data', data => { stdout += data })
+    compilation.stderr.on('data', data => { stderr += data })
 
     compilation.on('close', code => {
       debug('finished bundling PureScript.')
 
-      if (code !== 0) {
-        const errorMessage = stderr.join('');
+      process.stdout.write(stdout + '\n');
+      process.stderr.write(stderr + '\n');
 
-        if (errorMessage.length) {
-          reject(new Error(`bundling failed: ${errorMessage}`))
-        }
-        else {
-          reject(new Error('bundling failed'))
-        }
+      if (code !== 0) {
+        reject(new Error('bundling failed'))
       }
       else {
         resolve(fs.appendFileAsync(options.bundleOutput, `module.exports = ${options.bundleNamespace}`))
